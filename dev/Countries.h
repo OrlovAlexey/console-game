@@ -1,6 +1,7 @@
 
 #pragma once
 #include "AbstractUnit.h"
+#include "AbstractUnit.cpp"
 #include "AbstractCountry.h"
 
 class Russia : public Country {
@@ -8,55 +9,83 @@ public:
     Russia() {
         hp = 5000;
     }
-    struct Soldier : public Unit {
+struct Unit1 : public Unit {
         const int recovery_time = 1;
-        Soldier(){
+        Unit1() {
+            name = "Soldier";
             hp = 100;
             power = 100;
             shield = 20;
             country = "Russia";
+            symbol = 's';
         }
     };
-    struct Sniper : public Unit {
+    Unit* get_new_unit1() override {
+        return new Unit1();
+    }
+
+    struct Unit2 : public Unit {
         const int recovery_time = 2;
-        Sniper(){
+        Unit2() {
+            name = "Sniper";
             hp = 50;
             power = 150;
             shield = 0;
             country = "Russia";
+            symbol = 'S';
         }
     };
-    struct HeavySoldier : public Unit {
+    Unit* get_new_unit2() override {
+        return new Unit2();
+    }
+
+    struct Unit3 : public Unit {
         const int recovery_time = 3;
-        HeavySoldier(){
+        Unit3() {
+            name = "HeavySoldier";
             hp = 150;
             power = 50;
             shield = 80;
             country = "Russia";
+            symbol = 'H';
         }
     };
-    struct Tank : public Unit {
+    Unit* get_new_unit3() override {
+        return new Unit3();
+    }
+
+    struct Unit4 : public Unit {
         const int recovery_time = 10;
-        Tank(){
+        Unit4() {
+            name = "Tank";
             hp = 300;
             power = 150;
             shield = 150;
             country = "Russia";
+            symbol = 'T';
         }
     };
-    struct Artillery : public Unit {
+    Unit* get_new_unit4() override {
+        return new Unit4();
+    }
+
+    struct Unit5 : public Unit {
         const int recovery_time = 25;
-        Artillery(){
+        Unit5() {
+            name = "Artillery";
             hp = 100;
             power = 500;
             shield = 100;
             country = "Russia";
+            symbol = 'M';
             printf("Topol-M out!\n");
         }
     };
+    Unit* get_new_unit5() override {
+        return new Unit5();
+    }
+
 };
-
-
 
 
 
@@ -65,57 +94,87 @@ public:
     China() {
         hp = 6000;
     }
-    struct Soldier : public Unit {
+    struct Unit1 : public Unit {
         const int recovery_time = 1;
-        Soldier(){
+        Unit1() {
+            name = "Soldier";
             hp = 100;
             power = 100;
             shield = 0;
             country = "China";
+            symbol = 's';
         }
     };
-    struct KungfuMaster : public Unit {
+    Unit* get_new_unit1() override {
+        return new Unit1();
+    }
+
+    struct Unit2 : public Unit {
         const int recovery_time = 2;
-        KungfuMaster(){
+        Unit2() {
+            name = "KungfuMaster";
             hp = 100;
             power = 150;
             shield = 0;
             country = "China";
+            symbol = 'K';
         }
     };
-    struct Jeep : public Unit {
+    Unit* get_new_unit2() override {
+        return new Unit2();
+    }
+
+    struct Unit3 : public Unit {
         const int recovery_time = 3;
-        Jeep(){
+        Unit3() {
+            name = "Jeep";
             hp = 100;
             power = 100;
             shield = 100;
             country = "China";
+            symbol = 'J';
         }
     };
-    struct Submarine : public Unit {
+    Unit* get_new_unit3() override {
+        return new Unit3();
+    }
+
+    struct Unit4 : public Unit {
         const int recovery_time = 10;
-        Submarine(){
+        Unit4() {
+            name = "SubMarine";
             hp = 300;
             power = 250;
             shield = 0;
             country = "China";
+            symbol = 'P';
         }
     };
-    struct Dictator : public Unit {
+    Unit* get_new_unit4() override {
+        return new Unit4();
+    }
+
+    struct Unit5 : public Unit {
         const int recovery_time = 25;
-        Dictator(){
+        Unit5() {
+            name = "Dictator";
             hp = 20;
             power = 20;
             shield = 50;
             country = "China";
+            symbol = 'X';
             printf("Leader XI out!\n");
             for (int i = 0; i < 7; ++i)
                 spawn_soldier();//todo
         }
         Unit* spawn_soldier() {
-            return new Soldier();
+            return reinterpret_cast<Unit*>(new Unit1());
         }
     };
+    Unit* get_new_unit5() override {
+        return new Unit5();
+    }
+
 };
 
 
@@ -124,53 +183,82 @@ public:
     India() {
         hp = 4500;
     }
-    struct Soldier : public Unit {
+    struct Unit1 : public Unit {
         const int recovery_time = 1;
-        Soldier(){
+        Unit1() {
+            name = "Soldier";
             hp = 100;
             power = 110;
             shield = 10;
             country = "India";
+            symbol = 's';
         }
     };
-    struct Archer : public Unit {
+    Unit* get_new_unit1() override {
+        return new Unit1();
+    }
+
+    struct Unit2 : public Unit {
         const int recovery_time = 2;
-        Archer(){
+        Unit2() {
+            name = "Archer";
             hp = 30;
             power = 150;
             shield = 10;
             country = "India";
+            symbol = 'A';
         }
     };
-    struct Priest : public Unit {
+    Unit* get_new_unit2() override {
+        return new Unit2();
+    }
+
+    struct Unit3 : public Unit {
         const int recovery_time = 3;
-        Priest(){
+        Unit3() {
+            name = "Priest";
             hp = 100;
             power = 20;
             shield = 20;
             country = "India";
+            symbol = 'P';
         }
-        void healing(Unit* u){
+        void healing(Unit* u) {
             u->healing(10);
         }
     };
-    struct Elephant : public Unit {
+    Unit* get_new_unit3() override {
+        return new Unit3();
+    }
+
+    struct Unit4 : public Unit {
         const int recovery_time = 10;
-        Elephant(){
+        Unit4() {
+            name = "Elephant";
             hp = 400;
             power = 150;
             shield = 50;
             country = "India";
+            symbol = 'E';
         }
     };
-    struct God : public Unit {
+    Unit* get_new_unit4() override {
+        return new Unit4();
+    }
+
+    struct Unit5 : public Unit {
         const int recovery_time = 25;
-        God(){
+        Unit5() {
+            name = "God";
             hp = 500;
             power = 300;
             shield = 0;
             country = "India";
-            printf("Budha out!\n");
+            symbol = 'G';
+            printf("Buddha out!\n");
         }
     };
+    Unit* get_new_unit5() override {
+        return new Unit5();
+    }
 };

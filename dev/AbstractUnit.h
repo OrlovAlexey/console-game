@@ -4,10 +4,11 @@
 
 class Unit {
 protected:
+    std::string name;
     int power;
     int shield;
-    std::string name;
     std::string country;
+    char symbol;
     int hp;
 public:
     int get_hp() const {
@@ -24,6 +25,10 @@ public:
 
     int attack() const {
         return power;
+    }
+
+    char get_symbol() const {
+        return symbol;
     }
 
     void take_damage(int d) {
