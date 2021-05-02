@@ -1,10 +1,11 @@
 
 #pragma once
 #include <iostream>
-#include <time.h>
+#include <ctime>
 #include <ncurses.h>
 #include "unistd.h"
 #include <vector>
+#include <queue>
 
 #include "Countries.h"
 #include "AbstractCountry.h"

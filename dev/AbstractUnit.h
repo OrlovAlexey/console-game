@@ -19,7 +19,7 @@ public:
         return shield;
     }
 
-    int healing(int heal) {
+    void healing(int heal) {
         hp += heal;
     }
 
