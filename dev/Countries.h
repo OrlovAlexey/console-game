@@ -164,15 +164,9 @@ public:
             country = "China";
             symbol = 'X';
             printf("Leader XI out!\n");
-//            for (int i = 0; i < 7; ++i)
-//                spawn_soldier();
-        }
-        Unit* spawn_soldier() {
-            return reinterpret_cast<Unit*>(new Unit1());
         }
     };
     Unit* get_new_unit5() override {
-
         return new Unit5();
     }
 

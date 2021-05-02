@@ -7,25 +7,12 @@ using namespace std;
 typedef unsigned int uint;
 
 uint TIME = 0;
-uint CLK_TCK = CLOCKS_PER_SEC / 10; //~500000 - one second
+uint CLK_TCK = CLOCKS_PER_SEC / 5; //~500000 - one second
 
-int counter = 0;
-void tester() {
-    cout << (to_string(++counter) + '\n').c_str();
-}
-
-void timing() {
-    //timing
-    uint i = clock() / CLK_TCK;
-    while (i < 1000000) {
-        if ((clock() / CLK_TCK) % 1 == 0) {
-            if (i != (clock() / CLK_TCK)) {
-                std::cout << i << std::endl;
-                i = clock() / CLK_TCK;
-            }
-        }
-    }
-}
+//int counter = 0;
+//void tester() {
+//    cout << (to_string(++counter) + '\n').c_str();
+//} // for debug
 
 void clean_screen(uint n_seconds) {
     if (TIME % n_seconds == 0) { // clean every n_seconds seconds
@@ -155,8 +142,6 @@ void initializing_countries(CountryManager& country_manager) {
 }
 
 const uint NUMBER_OF_LINES = 5;
-//uint CONSOLE_HEIGHT = getmaxy(stdscr);
-//uint CONSOLE_WIDTH = getmaxx(stdscr);
 
 class LineManager {
     vector<pair<Unit*, char>> lines[NUMBER_OF_LINES];
@@ -217,30 +202,30 @@ uint current_player_country_damage;
 uint current_opponent_country_damage;
 
 void move_line(uint line, LineManager& line_manager, uint scr_width) {
-    uint j;
+    uint i1;
     vector<bool> to_delete(scr_width - 2, false);
     for (uint i = scr_width - 3; i > 0; --i) {
-        j = i - 1;
-        if (line_manager.get_owner(line, j) == 'p') {
-            Unit* left = line_manager[line][j].first;
-            Unit* right = line_manager[line][j + 1].first;
-            if (line_manager.get_owner(line, j + 1) == 'o') {
+        i1 = i - 1;
+        if (line_manager.get_owner(line, i1) == 'p') {
+            Unit* left = line_manager[line][i1].first;
+            Unit* right = line_manager[line][i1 + 1].first;
+            if (line_manager.get_owner(line, i1 + 1) == 'o') {
                 right->take_damage(left->attack());
                 if (right->get_hp() <= 0) {
-                    to_delete[j + 1] = true;
+                    to_delete[i1 + 1] = true;
                 }// killed
             }// battling
             if (left->get_hp() <= 0) {
-                to_delete[j] = true;
+                to_delete[i1] = true;
             }// killed
-            if (j != scr_width - 4 && line_manager.get_owner(line, j + 1) == '-') {
-                line_manager[line][j].second = '-';
-                line_manager[line][j + 1].first = line_manager[line][j].first;
-                line_manager[line][j].first = nullptr;
-                line_manager[line][j + 1].second = 'p';
+            if (i1 != scr_width - 4 && line_manager.get_owner(line, i1 + 1) == '-') {
+                line_manager[line][i1].second = '-';
+                line_manager[line][i1 + 1].first = line_manager[line][i1].first;
+                line_manager[line][i1].first = nullptr;
+                line_manager[line][i1 + 1].second = 'p';
 
             }// move
-            if (j == scr_width - 4) {
+            if (i1 == scr_width - 4) {
                 current_opponent_country_damage += left->attack();
             }// damaging opponents country
         }
@@ -350,9 +335,9 @@ void add_unit_on_line(Unit* unit, uint line, LineManager& line_manager, bool pla
     }
 }
 
-void draw_statistic(const CountryManager& country_manager, uint src_width) {
-    mvprintw(6, 0, (string("Your hp: ") + to_string(country_manager.get_country(PLAYER_FRACTION)->hp)).c_str());
-    mvprintw(7, 0, (string("Opponents hp: ") + to_string(country_manager.get_country(OPPONENT_FRACTION)->hp)).c_str());
+void draw_statistic(const CountryManager& country_manager) {
+    mvprintw(NUMBER_OF_LINES + 1, 0, (string("Your hp: ") + to_string(country_manager.get_country(PLAYER_FRACTION)->hp)).c_str());
+    mvprintw(NUMBER_OF_LINES + 2, 0, (string("Opponents hp: ") + to_string(country_manager.get_country(OPPONENT_FRACTION)->hp)).c_str());
 }
 
 void game(LineManager& line_manager, const CountryManager& country_manager) {
@@ -385,9 +370,9 @@ void game(LineManager& line_manager, const CountryManager& country_manager) {
             sleep(4);
             return;
         };
-        draw_statistic(country_manager, getmaxx(stdscr));
+        draw_statistic(country_manager);
         refresh();
-        move(5, 0);
+        move(NUMBER_OF_LINES, 0);
         Unit* temp;
         switch (getch()) {
             case 'w':
@@ -444,11 +429,11 @@ void game(LineManager& line_manager, const CountryManager& country_manager) {
                 add_unit_on_line(country_manager.get_country(OPPONENT_FRACTION)->get_new_unit4(), opponent_choice, line_manager, 0);
                 break;
             case '0':
-                temp = country_manager.get_country(PLAYER_FRACTION)->get_new_unit5();
-                add_unit_on_line(temp, player_choice, line_manager, 1);
+                temp = country_manager.get_country(OPPONENT_FRACTION)->get_new_unit5();
+                add_unit_on_line(temp, opponent_choice, line_manager, 0);
                 if (temp->get_symbol() == 'X') {
                     for (uint i = 0; i < 7; ++i)
-                        add_unit_on_line(country_manager.get_country(PLAYER_FRACTION)->get_new_unit1(), player_choice, line_manager, 1);
+                        add_unit_on_line(country_manager.get_country(OPPONENT_FRACTION)->get_new_unit1(), opponent_choice, line_manager, 0);
                 }
                 break;
 
