@@ -10,6 +10,7 @@ protected:
     std::string country;
     char symbol;
     int hp;
+    unsigned int recovery_time;
 public:
     int get_hp() const {
         return hp;
@@ -41,5 +42,13 @@ public:
         } else {
             shield -= d;
         }
+    }
+
+    std::string get_name() const {
+        return name;
+    }
+
+    unsigned int get_recovery_time() const {
+        return recovery_time;
     }
 };

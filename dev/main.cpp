@@ -8,17 +8,19 @@ typedef unsigned int uint;
 
 uint TIME = 0;
 uint CLK_TCK = CLOCKS_PER_SEC / 5; //~500000 - one second
+uint RECOVERY_DELAY_COEFF = 2;
+uint SCREEN_RIGHT_BIAS = 20;
 
 //int counter = 0;
 //void tester() {
 //    cout << (to_string(++counter) + '\n').c_str();
 //} // for debug
 
-void clean_screen(uint n_seconds) {
-    if (TIME % n_seconds == 0) { // clean every n_seconds seconds
-        clear();
-    }
-}
+//void clean_screen(uint n_seconds) {
+//    if (TIME % n_seconds == 0) { // clean every n_seconds seconds
+//        clear();
+//    }
+//}
 
 void start() {
     initscr();
@@ -32,17 +34,22 @@ void start() {
 
 
 const uint NUMBER_OF_FRACTIONS = 3;
+const uint NUMBER_OF_UNITS = 5;
 uint PLAYER_FRACTION = 0;
 uint OPPONENT_FRACTION = 0;
 
 class CountryManager {
     string countries[NUMBER_OF_FRACTIONS];
     Country *player_country, *opponent_country;
+    vector<uint> player_recovery_times, opponent_recovery_times;
 public:
     CountryManager() {
         countries[0] = "Russia";
         countries[1] = "China";
         countries[2] = "India";
+
+        player_recovery_times.resize(NUMBER_OF_UNITS, 0);
+        opponent_recovery_times.resize(NUMBER_OF_UNITS, 0);
     }
     string operator[] (uint index) const {
         return countries[index];
@@ -71,13 +78,17 @@ public:
                 break;
         }
     }
-    Country* get_country(uint fraction) const {
-        if (fraction == PLAYER_FRACTION) {
-            return player_country;
-        }
-        else {
-            return opponent_country;
-        }
+    Country* get_player_country() const {
+        return player_country;
+    }
+    Country* get_opponent_country() const {
+        return opponent_country;
+    }
+    vector<uint>& get_player_recovery_times() {
+        return player_recovery_times;
+    }
+    vector<uint>& get_opponent_recovery_times() {
+        return opponent_recovery_times;
     }
 };
 
@@ -261,7 +272,7 @@ void move_line(uint line, LineManager& line_manager, uint scr_width) {
             line_manager[line][i].first = nullptr;
             line_manager[line][i].second = '-';
         }
-    }
+    }// killing actually
     if (!line_manager.is_left_buffer_empty(line) && line_manager.get_owner(line, 0) == '-') {
         line_manager[line][0].first = line_manager.get_top_left_buffer(line);
         line_manager[line][0].second = 'p';
@@ -274,16 +285,12 @@ void move_line(uint line, LineManager& line_manager, uint scr_width) {
 }
 
 
-void draw_lines(LineManager& line_manager, uint scr_width, uint player_choice, uint opponent_choice) {
+void draw_lines(LineManager& line_manager, uint scr_width, uint player_choice, uint opponent_choice, bool is_move) {
 //    line_manager[line];// here the units from line
 //    addstr(string(scr_width - 2, '-').c_str());// prints empty line
     current_player_country_damage = 0;
     current_opponent_country_damage = 0;
-    bool is_move = false;
-    if ((clock() / CLK_TCK) - TIME > 1) {
-        is_move = true;
-        TIME = clock() / CLK_TCK;
-    }
+
     vector<string> lines;
     for (uint line = 0; line < NUMBER_OF_LINES; ++line) {
         string new_line(scr_width - 2, '-');
@@ -311,7 +318,7 @@ void draw_lines(LineManager& line_manager, uint scr_width, uint player_choice, u
         } else {
             addch(' ');
         }
-    }
+    }// printing lines
 }
 
 
@@ -335,42 +342,132 @@ void add_unit_on_line(Unit* unit, uint line, LineManager& line_manager, bool pla
     }
 }
 
-void draw_statistic(const CountryManager& country_manager) {
-    mvprintw(NUMBER_OF_LINES + 1, 0, (string("Your hp: ") + to_string(country_manager.get_country(PLAYER_FRACTION)->hp)).c_str());
-    mvprintw(NUMBER_OF_LINES + 2, 0, (string("Opponents hp: ") + to_string(country_manager.get_country(OPPONENT_FRACTION)->hp)).c_str());
+bool checking_for_move() {
+    if ((clock() / CLK_TCK) - TIME > 1) {
+        TIME = clock() / CLK_TCK;
+        return true;
+    }
+    return false;
 }
 
-void game(LineManager& line_manager, const CountryManager& country_manager) {
+void draw_statistic(const CountryManager& country_manager) {
+    mvprintw(NUMBER_OF_LINES + 1, 1, (string("Your hp: ") + to_string(country_manager.get_player_country()->hp)).c_str());
+    string opp = string("Opponents hp: ") + to_string(country_manager.get_opponent_country()->hp);
+    mvprintw(NUMBER_OF_LINES + 1, getmaxx(stdscr) - SCREEN_RIGHT_BIAS, opp.c_str());
+}
+
+void start_recovery(CountryManager& country_manager) {
+    for (uint i = 0; i < NUMBER_OF_UNITS; ++i) {
+        country_manager.get_player_recovery_times()[i] = RECOVERY_DELAY_COEFF * (*country_manager.get_player_country())[i]->get_recovery_time();
+    }
+    for (uint i = 0; i < NUMBER_OF_UNITS; ++i) {
+        country_manager.get_opponent_recovery_times()[i] = RECOVERY_DELAY_COEFF * (*country_manager.get_opponent_country())[i]->get_recovery_time();
+    }
+}
+
+void change_recovery(CountryManager& country_manager) {
+    for (uint i = 0; i < NUMBER_OF_UNITS; ++i) {
+        if (country_manager.get_player_recovery_times()[i] != 0) {
+            --country_manager.get_player_recovery_times()[i];
+        }// decreasing recovery time
+    }
+    for (uint i = 0; i < NUMBER_OF_UNITS; ++i) {
+        if (country_manager.get_opponent_recovery_times()[i] != 0) {
+            --country_manager.get_opponent_recovery_times()[i];
+        }// decreasing recovery time
+    }
+}
+
+void draw_recovery(CountryManager& country_manager) {
+    mvprintw(NUMBER_OF_LINES + 2, 1, "Player soldiers: ");
+    for (uint i = 0; i < NUMBER_OF_UNITS; ++i) {
+        Unit* player_unit = (*country_manager.get_player_country())[i];
+        mvprintw(NUMBER_OF_LINES + 3 + i, 1, (player_unit->get_name() + "(" + player_unit->get_symbol() + ")" + ": " + std::to_string(country_manager.get_player_recovery_times()[i])).c_str());
+    }// printing
+    mvprintw(NUMBER_OF_LINES + 2, getmaxx(stdscr) - SCREEN_RIGHT_BIAS, "Opponent soldiers: ");
+    for (uint i = 0; i < NUMBER_OF_UNITS; ++i) {
+        Unit* opponent_unit = (*country_manager.get_opponent_country())[i];
+        mvprintw(NUMBER_OF_LINES + 3 + i, getmaxx(stdscr) - SCREEN_RIGHT_BIAS, (opponent_unit->get_name() + "(" + opponent_unit->get_symbol() + ")" + ": " + std::to_string(country_manager.get_opponent_recovery_times()[i])).c_str());
+    }// printing
+}
+
+void check_for_boss(const string& whois, Unit* temp, const CountryManager& country_manager, LineManager& line_manager, uint player_choice, uint opponent_choice) {
+    if (whois == "player") {
+        if (temp->get_name() == "Dictator") {
+            clear();
+            mvprintw(NUMBER_OF_LINES, 1, "Leader XI out!");
+            for (uint i = 0; i < 7; ++i)
+                add_unit_on_line(country_manager.get_player_country()->get_new_unit1(), player_choice, line_manager, 1);
+        }
+        if (temp->get_name() == "Artillery") {
+            clear();
+            mvprintw(NUMBER_OF_LINES, 1, "Topol-M out!");
+        }
+        if (temp->get_name() == "God") {
+            clear();
+            mvprintw(NUMBER_OF_LINES, 1, "Buddha out!");
+        }
+    }
+    else if (whois == "opponent") {
+        if (temp->get_name() == "Dictator") {
+            clear();
+            mvprintw(NUMBER_OF_LINES, getmaxx(stdscr) - SCREEN_RIGHT_BIAS, "Leader XI out!");
+            for (uint i = 0; i < 7; ++i)
+                add_unit_on_line(country_manager.get_opponent_country()->get_new_unit1(), opponent_choice, line_manager, 0);
+        }
+        if (temp->get_name() == "Artillery") {
+            clear();
+            mvprintw(NUMBER_OF_LINES, getmaxx(stdscr) - SCREEN_RIGHT_BIAS, "Topol-M out!");
+        }
+        if (temp->get_name() == "God") {
+            clear();
+            mvprintw(NUMBER_OF_LINES, getmaxx(stdscr) - SCREEN_RIGHT_BIAS, "Buddha out!");
+        }
+    }
+}
+
+bool if_endgame(const CountryManager& country_manager) {
+    if (country_manager.get_player_country()->take_damage(current_player_country_damage) <= 0) {
+        clear();
+        mvprintw(10, (getmaxx(stdscr) - SCREEN_RIGHT_BIAS) / 2, "OPPONENT WINS");
+        refresh();
+        sleep(4);
+        return true;
+    }
+    if (country_manager.get_opponent_country()->take_damage(current_opponent_country_damage) <= 0) {
+        clear();
+        mvprintw(10, (getmaxx(stdscr) - SCREEN_RIGHT_BIAS) / 2, "PLAYER WINS");
+        refresh();
+        sleep(4);
+        return true;
+    }
+    return false;
+}
+
+
+void game(LineManager& line_manager, CountryManager& country_manager) {
     noecho();// не отображается то, что печатаешь
     nodelay(stdscr, true);// getch() не ждет нажатия
-    clear();
+//    clear();
     uint player_choice = 0;
     uint opponent_choice = 0;
     bool pause = false;
 
     // timing
     TIME = clock() / CLK_TCK;
+    start_recovery(country_manager);
 
     while (true) {
         refresh();
         move(0, 0); // перемещает курсор в origin
 
-        draw_lines(line_manager, getmaxx(stdscr), player_choice, opponent_choice);
-        if (country_manager.get_country(PLAYER_FRACTION)->take_damage(current_player_country_damage) <= 0) {
-            clear();
-            mvprintw(10, getmaxx(stdscr) / 2, "OPPONENT WINS");
-            refresh();
-            sleep(4);
-            return;
-        }
-        if (country_manager.get_country(OPPONENT_FRACTION)->take_damage(current_opponent_country_damage) <= 0) {
-            clear();
-            mvprintw(10, getmaxx(stdscr) / 2, "PLAYER WINS");
-            refresh();
-            sleep(4);
-            return;
-        };
+        bool is_move = checking_for_move();
+
+        draw_lines(line_manager, getmaxx(stdscr), player_choice, opponent_choice, is_move);
         draw_statistic(country_manager);
+        if (is_move)
+            change_recovery(country_manager);
+        draw_recovery(country_manager);
         refresh();
         move(NUMBER_OF_LINES, 0);
         Unit* temp;
@@ -397,43 +494,75 @@ void game(LineManager& line_manager, const CountryManager& country_manager) {
                 }
                 break;
             case '1':
-                add_unit_on_line(country_manager.get_country(PLAYER_FRACTION)->get_new_unit1(), player_choice, line_manager, 1);
+                if (country_manager.get_player_recovery_times()[0] == 0) {
+                    temp = country_manager.get_player_country()->get_new_unit1();
+                    add_unit_on_line(temp, player_choice, line_manager, 1);
+                    country_manager.get_player_recovery_times()[0] = RECOVERY_DELAY_COEFF * temp->get_recovery_time();
+                }
                 break;
             case '2':
-                add_unit_on_line(country_manager.get_country(PLAYER_FRACTION)->get_new_unit2(), player_choice, line_manager, 1);
+                if (country_manager.get_player_recovery_times()[1] == 0) {
+                    temp = country_manager.get_player_country()->get_new_unit2();
+                    add_unit_on_line(temp, player_choice, line_manager, 1);
+                    country_manager.get_player_recovery_times()[1] = RECOVERY_DELAY_COEFF * temp->get_recovery_time();
+                }
                 break;
             case '3':
-                add_unit_on_line(country_manager.get_country(PLAYER_FRACTION)->get_new_unit3(), player_choice, line_manager, 1);
+                if (country_manager.get_player_recovery_times()[2] == 0) {
+                    temp = country_manager.get_player_country()->get_new_unit3();
+                    add_unit_on_line(temp, player_choice, line_manager, 1);
+                    country_manager.get_player_recovery_times()[2] = RECOVERY_DELAY_COEFF * temp->get_recovery_time();
+                }
                 break;
             case '4':
-                add_unit_on_line(country_manager.get_country(PLAYER_FRACTION)->get_new_unit4(), player_choice, line_manager, 1);
+                if (country_manager.get_player_recovery_times()[3] == 0) {
+                    temp = country_manager.get_player_country()->get_new_unit4();
+                    add_unit_on_line(temp, player_choice, line_manager, 1);
+                    country_manager.get_player_recovery_times()[3] = RECOVERY_DELAY_COEFF * temp->get_recovery_time();
+                }
                 break;
             case '5':
-                temp = country_manager.get_country(PLAYER_FRACTION)->get_new_unit5();
-                add_unit_on_line(temp, player_choice, line_manager, 1);
-                if (temp->get_symbol() == 'X') {
-                    for (uint i = 0; i < 7; ++i)
-                        add_unit_on_line(country_manager.get_country(PLAYER_FRACTION)->get_new_unit1(), player_choice, line_manager, 1);
+                if (country_manager.get_player_recovery_times()[4] == 0) {
+                    temp = country_manager.get_player_country()->get_new_unit5();
+                    add_unit_on_line(temp, player_choice, line_manager, 1);
+                    country_manager.get_player_recovery_times()[4] = RECOVERY_DELAY_COEFF * temp->get_recovery_time();
+                    check_for_boss("player", temp, country_manager, line_manager, player_choice, opponent_choice);
                 }
                 break;
             case '6':
-                add_unit_on_line(country_manager.get_country(OPPONENT_FRACTION)->get_new_unit1(), opponent_choice, line_manager, 0);
+                if (country_manager.get_opponent_recovery_times()[0] == 0) {
+                    temp = country_manager.get_opponent_country()->get_new_unit1();
+                    add_unit_on_line(temp, opponent_choice,line_manager, 0);
+                    country_manager.get_opponent_recovery_times()[0] = RECOVERY_DELAY_COEFF * temp->get_recovery_time();
+                }
                 break;
             case '7':
-                add_unit_on_line(country_manager.get_country(OPPONENT_FRACTION)->get_new_unit2(), opponent_choice, line_manager, 0);
+                if (country_manager.get_opponent_recovery_times()[1] == 0) {
+                    temp = country_manager.get_opponent_country()->get_new_unit2();
+                    add_unit_on_line(temp, opponent_choice, line_manager, 0);
+                    country_manager.get_opponent_recovery_times()[1] = RECOVERY_DELAY_COEFF * temp->get_recovery_time();
+                }
                 break;
             case '8':
-                add_unit_on_line(country_manager.get_country(OPPONENT_FRACTION)->get_new_unit3(), opponent_choice, line_manager, 0);
+                if (country_manager.get_opponent_recovery_times()[2] == 0) {
+                    temp = country_manager.get_opponent_country()->get_new_unit3();
+                    add_unit_on_line(temp, opponent_choice, line_manager, 0);
+                    country_manager.get_opponent_recovery_times()[2] = RECOVERY_DELAY_COEFF * temp->get_recovery_time();
+                }
                 break;
             case '9':
-                add_unit_on_line(country_manager.get_country(OPPONENT_FRACTION)->get_new_unit4(), opponent_choice, line_manager, 0);
+                if (country_manager.get_opponent_recovery_times()[3] == 0) {
+                    temp = country_manager.get_opponent_country()->get_new_unit4();
+                    add_unit_on_line(temp, opponent_choice, line_manager, 0);
+                    country_manager.get_opponent_recovery_times()[3] = RECOVERY_DELAY_COEFF * temp->get_recovery_time();
+                }
                 break;
             case '0':
-                temp = country_manager.get_country(OPPONENT_FRACTION)->get_new_unit5();
-                add_unit_on_line(temp, opponent_choice, line_manager, 0);
-                if (temp->get_symbol() == 'X') {
-                    for (uint i = 0; i < 7; ++i)
-                        add_unit_on_line(country_manager.get_country(OPPONENT_FRACTION)->get_new_unit1(), opponent_choice, line_manager, 0);
+                if (country_manager.get_opponent_recovery_times()[4] == 0) {
+                    temp = country_manager.get_opponent_country()->get_new_unit5();
+                    add_unit_on_line(temp, opponent_choice, line_manager, 0);
+                    country_manager.get_opponent_recovery_times()[4] = RECOVERY_DELAY_COEFF * temp->get_recovery_time();
+                    check_for_boss("opponent", temp, country_manager, line_manager, player_choice, opponent_choice);
                 }
                 break;
 
@@ -441,7 +570,8 @@ void game(LineManager& line_manager, const CountryManager& country_manager) {
                 pause = true;
                 break;
         }
-        clean_screen(100);
+//        clean_screen(100);
+        pause = if_endgame(country_manager);
         if (pause) {
             break;
         }
